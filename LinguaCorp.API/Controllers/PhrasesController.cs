@@ -236,6 +236,11 @@ namespace LinguaCorp.API.Controllers
                     return Unauthorized("Invalid API key.");
                 }
 
+                if(phrases == null || phrases.Count == 0)
+                {
+                    return BadRequest("The phrases list cannot be null or empty.");
+                }
+
                 List<Phrase> createdList = [];
                 foreach (var phrase in phrases)
                 {
