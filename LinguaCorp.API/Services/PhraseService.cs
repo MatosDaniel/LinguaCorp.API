@@ -88,6 +88,19 @@ namespace LinguaCorp.API.Services
             _phrases.Remove(phrase);
             return true;
         }
+
+        // Retrieve phrases by language code
+        public List<Phrase> GetPhrasesByLanguage(string languageCode)
+        {
+            List<Phrase> phrases = [.. _phrases.Where(p => p.Language == languageCode)];
+
+            if (phrases == null)
+            {
+                throw new KeyNotFoundException($"Phrases with the language code {languageCode} not found.");
+            }
+
+            return phrases;
+        }
     }
 }
 

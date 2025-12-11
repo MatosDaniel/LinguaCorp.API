@@ -9,5 +9,6 @@ namespace LinguaCorp.API.Services
         public Phrase CreatePhrase(Phrase phrase);
         public bool UpdatePhrase(int id, Phrase updated);
         public bool DeletePhrase(int id);
+        public List<Phrase> GetPhrasesByLanguage(string languageCode);
     }
 }

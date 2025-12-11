@@ -2,6 +2,7 @@
 using LinguaCorp.API.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
+using System.Globalization;
 
 
 namespace LinguaCorp.API.Controllers
@@ -167,6 +168,94 @@ namespace LinguaCorp.API.Controllers
 
             _logger.LogInformation("Deleted phrase with ID {Id}", id);
             return NoContent();
+        }
+
+        /// <summary>
+        /// Retrieves a list of phrases by its language code.
+        /// </summary>
+        /// <param name="languageCode">Phrases Language Code</param>
+        /// <returns>Returns the phrases if found.</returns>
+        [HttpGet("language/{languageCode}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public IActionResult GetPhrasesByLangCode(string languageCode, [FromHeader(Name = "X-API-KEY")] string apiKey)
+        {
+
+            _logger.LogInformation("Request received to get phrases with the language code {languageCode}", languageCode);
+
+            if (string.IsNullOrEmpty(languageCode) || (languageCode.Length < 2 && languageCode.Length > 3))
+            {
+                _logger.LogWarning("Invalid language code {languageCode} provided", languageCode);
+                return BadRequest("Language Code must be a valid stirng between 2 and 3 characters.");
+            }
+
+            try
+            {
+                var configuredKey = _configuration["ApiSettings:ApiKey"];
+                if (apiKey != configuredKey)
+                {
+                    return Unauthorized("Invalid API key.");
+                }
+
+                List<Phrase> phrases = _phraseService.GetPhrasesByLanguage(languageCode);
+
+                if (phrases.Count == 0)
+                {
+                    _logger.LogWarning("No phrases found with the language code {languageCode}", languageCode);
+                    return NotFound($"No phrases found with the language code {languageCode}");
+                }
+
+                _logger.LogInformation("Phrases with the language code {languageCode} retrieved successfully", languageCode);
+
+                return Ok(phrases);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex.Message);
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving phrases with the language code {languageCode}", languageCode);
+                return StatusCode(500, "An error occurred while retrieving the phrases.");
+            }
+        }
+
+        [HttpPost("bulk")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public IActionResult CreateBulk([FromBody] List<Phrase> phrases, [FromHeader(Name = "X-API-KEY")] string apiKey)
+        {
+            try
+            {
+                var configuredKey = _configuration["ApiSettings:ApiKey"];
+                if (apiKey != configuredKey)
+                {
+                    return Unauthorized("Invalid API key.");
+                }
+
+                List<Phrase> createdList = [];
+                foreach (var phrase in phrases)
+                {
+                    //This verifies if the Model is filled correctly. If not, the error message that was defined is returned
+                    if (!ModelState.IsValid)
+                    {
+                        return BadRequest(ModelState);
+                    }
+                    var created = _phraseService.CreatePhrase(phrase);
+                    createdList.Add(created);
+
+                    _logger.LogInformation("Created phrase {OrigText} with ID {Id}", created.OriginalText, created.Id);
+                }
+                return Ok(createdList);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating phrases in bulk.");
+                return StatusCode(500, "An error occurred while creating phrases in bulk.");
+            }
         }
     }
 }
